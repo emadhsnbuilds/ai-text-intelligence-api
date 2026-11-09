@@ -55,6 +55,20 @@ def test_analyze_rejects_empty_text():
 
 
 
+def test_analyze_rejects_text_over_max_length(monkeypatch):
+    def mock_analyze_text(text: str):
+        raise AssertionError("analyze_text must not be called for oversized input")
+
+    monkeypatch.setattr(main, "analyze_text", mock_analyze_text)
+
+    response = client.post(
+        "/analyze",
+        json={"text": "a" * 10001},
+    )
+
+    assert response.status_code == 422
+
+
 def test_analyze_rejects_missing_text():
     response = client.post(
         "/analyze",
