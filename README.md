@@ -193,9 +193,61 @@ http://localhost:8001/docs
 
 ## Deployment
 
-The intended deployment platform is **Google Cloud Run**, with the Anthropic API key managed through Google Secret Manager.
+The API is deployed on **Google Cloud Run**.
 
-The live deployment URL will be added here after deployment.
+| Setting | Value |
+|---|---|
+| Project | `fde-sprint` |
+| Service | `ai-text-intelligence-api` |
+| Region | `europe-west1` |
+| Access | Private: Google IAM authentication required (no public access) |
+| Runtime service account | `ai-text-api-runtime@fde-sprint.iam.gserviceaccount.com` |
+| Anthropic API key | Google Secret Manager secret `anthropic-api-key`, exposed as `ANTHROPIC_API_KEY` |
+| Memory / CPU | 512 MiB / 1 CPU |
+| Concurrency | 2 requests per instance |
+| Maximum instances | 2 |
+| Request timeout | 60 seconds |
+
+The service is not publicly accessible. Callers need the `roles/run.invoker` role on the service.
+
+### Deploy
+
+The API key is never passed on the command line: it is read from Secret Manager at runtime.
+
+```bash
+gcloud run deploy ai-text-intelligence-api \
+  --project fde-sprint \
+  --region europe-west1 \
+  --source . \
+  --no-allow-unauthenticated \
+  --service-account ai-text-api-runtime@fde-sprint.iam.gserviceaccount.com \
+  --set-secrets ANTHROPIC_API_KEY=anthropic-api-key:<version> \
+  --set-env-vars ANTHROPIC_MODEL=claude-haiku-5-5 \
+  --memory 512Mi \
+  --cpu 1 \
+  --concurrency 2 \
+  --max-instances 2 \
+  --timeout 60
+```
+
+Replace `<version>` with the secret version to use (for example `latest`). The runtime service account needs the `roles/secretmanager.secretAccessor` role on the secret.
+
+### Access the private service locally
+
+Start an authenticated local proxy to the service (uses your own `gcloud` credentials):
+
+```bash
+gcloud run services proxy ai-text-intelligence-api \
+  --project fde-sprint \
+  --region europe-west1 \
+  --port 8090
+```
+
+While the proxy is running, open the Swagger UI at:
+
+```text
+http://localhost:8090/docs
+```
 
 ## License
 
